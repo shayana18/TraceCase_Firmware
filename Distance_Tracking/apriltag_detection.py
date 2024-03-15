@@ -2,6 +2,8 @@ import apriltag
 import cv2
 import time
 from picamera2 import Picamera2, Preview
+import numpy as np 
+import math 
 
 piCam = Picamera2() #creating piCamera object
 piCam.preview_configuration.main.size = (640,360) #configuring image size
@@ -9,13 +11,6 @@ piCam.preview_configuration.main.format = "RGB888" #setting format required for 
 piCam.preview_configuration.align()
 piCam.configure("preview") #applies preview configuration 
 piCam.start()
-
-# distance from camera to object(face) measured in centimeters
-Known_distance = 47
-
-
-# width of image in the real world in centimeter 
-Known_width = 16.1
 
 # Colors 
 GREEN = (0, 255, 0) 
@@ -39,7 +34,7 @@ def detect_apriltag():
 
 def apriltag_data(image): 
 
-	apriltag_width = 0 # making face width to zero 
+	apriltag_width = 30 # making face width to zero 
 
 	# detecting face in the image 
 	apriltags = detect_apriltag() 
@@ -79,7 +74,15 @@ try:
 			
 			# draw the center (x, y)-coordinates of the AprilTag
 			(cX, cY) = (int(r.center[0]), int(r.center[1]))
-			cv2.circle(image, (cX, cY), 5, (0, 0, 255), -1)
+			cv2.circle(image, (cX, cY), 5, (0, 0, 255), -1) #middle 
+			cv2.circle(image, (ptB[0], ptB[1]), 5, (0, 0, 255), -1) #Bottom Right 
+			cv2.circle(image, (ptD[0], ptD[1]), 5, (0, 0, 255), -1) # Top left
+
+			#getting distance between poin B and D 
+			distance = int(math.sqrt((ptB[0] - ptD[0])**2 + (ptB[1] - ptD[1])**2))
+			strDist = "Dist: "+ str(distance)
+			cv2.putText(image, strDist, (cX, cY - 100),
+			cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 			
 			# draw the tag family on the image
 			tagFamily = r.tag_family.decode("utf-8")
