@@ -36,6 +36,7 @@ long durationR;
 double distanceR;
 double obstacle[2];
 double distanceU;
+int distancePWM;
 
 // PID variables
 float d_Temp = 0;
@@ -94,14 +95,35 @@ void loop() {
   obstacle[0] = distanceL;
   obstacle[1] = distanceR;
 
-  Serial.print("Distance: ");
-  Serial.println(obstacle[1]);
-  Serial.print("PID: ");
-  Serial.println(PID(obstacle[1]));
+//  Serial.print("Distance: ");
+//  Serial.println(obstacle[1]);
+//  Serial.print("PID: ");
+//  Serial.println(PID(obstacle[1]));
 
-  int distancePWM = 285*(1 - exp(PID(distanceU))/85) - 15.5; // Normalize user distance to a speed
-  int PWMdiff = 255/250 * (distanceR - distanceL);
+  if (distanceR > 800)
+    distancePWM = 0;   
+  else
+    distancePWM = (320*(1 - exp(PID(distanceR))/85) - 51.77); // Normalize user distance to a speed
+      
+  digitalWrite(ENA, distancePWM);
+  digitalWrite(ENB, distancePWM);
   
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+  
+//  // Object avoidance
+//  if (distanceR < 50 || distanceL < 50) {
+//    int PWMdiff = 255/250 * (distanceR - distanceL);   
+//    if (PWMdiff > 0)
+//      ENA = distancePWM - PWMdiff;
+//    else if (PWMdiff < 0)
+//      ENB = distancePWM + PWMdiff;
+//  }
+
+  // User angle shift
+  // TBD
  
 }
 
@@ -137,10 +159,10 @@ double PID(double newVal) {
   d_Temp = errVal;
 
   PWM_Duty = PWM_Temp - (P + I + D);
-//  if (PWM_Duty > 255)
-//    PWM_Duty = 255;
-//  if (PWM_Duty < 5)
-//    PWM_Duty = 5;
+  if (PWM_Duty > 255)
+    PWM_Duty = 255;
+  if (PWM_Duty < 5)
+    PWM_Duty = 5;
 
   PWM_Temp = PWM_Duty;
   
