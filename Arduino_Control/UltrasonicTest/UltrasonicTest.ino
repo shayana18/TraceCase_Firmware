@@ -103,7 +103,7 @@ void loop() {
   if (distanceR > 800)
     distancePWM = 0;   
   else
-    distancePWM = (320*(1 - exp(PID(distanceR))/85) - 51.77); // Normalize user distance to a speed
+    distancePWM = PID(530*(1 - exp(-(distanceR))/85) - 240); // Normalize user distance to a speed
       
   digitalWrite(ENA, distancePWM);
   digitalWrite(ENB, distancePWM);
@@ -134,7 +134,7 @@ double PID(double newVal) {
   float I;
   float D;
 
-  if (newVal > 800)
+  if (newVal > 300)
   newVal = PWM_Duty;
   
   // Something to try: for an array of read vals, we can keep each and decay them according to exp(-4*n/(N-1))
