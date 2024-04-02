@@ -21,28 +21,32 @@ const int trigPinR = 12;
 const int echoPinR = 13;
 
 // PID constants
-const double Kp = 0.5;
-const double Ki = 0;
-const double Kd = 0;
-const int Set_Point = 100;
-const double windupGuard = 255;
-const float iMax = 255;
-const float iMin = 0;
+const double Kp = 0.55;
+const double Ki = 0.0;
+const double Kd = 0.35;
+const double Set_Point = 100.0;
+//const double windupGuard = 255;
+const double iMax = 255;
+const double iMin = 0;
 
 // general variables
 long durationL;
 double distanceL;
-long durationR;
+double durationR;
 double distanceR;
-double obstacle[2];
+double obstacle[5];
 double distanceU;
-int distancePWM;
+double distancePWM;
+bool direct;
+double last_error;
+double totalDist = 0;
+
 
 // PID variables
-float d_Temp = 0;
-float i_Temp = 0;
-float PWM_Temp = 166;
-float PWM_Duty = 166;
+double d_Temp = 0.0;
+double i_Temp = 0.0;
+double PWM_Temp = 166.0;
+double PWM_Duty = 166.0;
 
 void setup() {
   pinMode(ENA, OUTPUT); // Right Motor PWNM
@@ -60,27 +64,39 @@ void setup() {
   Serial.begin(9600); // Starts the serial communication
 }
 void loop() {
-  // Clears the trigPin
-  digitalWrite(trigPinL, LOW); // 3ums
-  delayMicroseconds(2); // 2ums
-  digitalWrite(trigPinL, HIGH); // 3ums
-  delayMicroseconds(10); // 10ums
-  digitalWrite(trigPinL, LOW); //3ums
-  // Reads the echoPin, returns the sound wave travel time in microseconds
-  durationL = pulseIn(echoPinL, HIGH);
-  // Calculating the distance
-  distanceL = durationL * 0.034 / 2; // ~3ums
+//  // Clears the trigPin
+//  digitalWrite(trigPinL, LOW); // 3ums
+//  delayMicroseconds(2); // 2ums
+//  digitalWrite(trigPinL, HIGH); // 3ums
+//  delayMicroseconds(10); // 10ums
+//  digitalWrite(trigPinL, LOW); //3ums
+//  // Reads the echoPin, returns the sound wave travel time in microseconds
+//  durationL = pulseIn(echoPinL, HIGH);
+//  // Calculating the distance
+//  distanceL = durationL * 0.034 / 2; // ~3ums
+  
+  int i = 0;
+  while (i < 5) { 
+    // Clears the trigPin
+    digitalWrite(trigPinR, LOW); // 3ums
+    delayMicroseconds(2);  // 2ums
+    digitalWrite(trigPinR, HIGH); // 3ums
+    delayMicroseconds(10); // 10ums
+    digitalWrite(trigPinR, LOW); // 3ums
+    // Reads the echoPin, returns the sound wave travel time in microseconds
+    durationR = pulseIn(echoPinR, HIGH);
+    // Calculating the distance
+    distanceR = durationR * 0.034 / 2; // ~3ums
 
-  // Clears the trigPin
-  digitalWrite(trigPinR, LOW); // 3ums
-  delayMicroseconds(2);  // 2ums
-  digitalWrite(trigPinR, HIGH); // 3ums
-  delayMicroseconds(10); // 10ums
-  digitalWrite(trigPinR, LOW); // 3ums
-  // Reads the echoPin, returns the sound wave travel time in microseconds
-  durationR = pulseIn(echoPinR, HIGH);
-  // Calculating the distance
-  distanceR = durationR * 0.034 / 2; // ~3ums
+    if (distanceR > 300)
+      i--;
+    
+    totalDist += distanceR;
+    
+    i++;
+  }
+
+  distanceU = totalDist/5;
 
 // Total delay from both R&L = ~50ums
 
@@ -91,30 +107,40 @@ void loop() {
 //  // Prints the distance on the Serial Monitor
 //  Serial.print("\t\t Distance Right: ");
 //  Serial.println(distanceR);
-
-  obstacle[0] = distanceL;
-  obstacle[1] = distanceR;
+//
+//  obstacle[0] = distanceL;
+//  obstacle[1] = distanceR;
 
 //  Serial.print("Distance: ");
-//  Serial.println(obstacle[1]);
+//  Serial.println(distanceR);
 //  Serial.print("PID: ");
-//  Serial.println(PID(obstacle[1]));
+//  Serial.println(demoPID(distanceR));
 
-  if (distanceR > 800)
-    distancePWM = 0;   
-  else
-    distancePWM = PID(530*(1 - exp(-(distanceR))/85) - 240); // Normalize user distance to a speed
+//  if (distanceR > 800 || distanceR < 20)
+//    distancePWM = 0;   
+//  else {
+    distancePWM = demoPID(distanceR);
+//  }
+    
+//    distancePWM = PID(530*(1 - exp(-(distanceR))/85) - 240); // Normalize user distance to a speed
       
-  digitalWrite(ENA, distancePWM);
-  digitalWrite(ENB, distancePWM);
+  analogWrite(ENA, distancePWM);
+  analogWrite(ENB, distancePWM);
   
-  digitalWrite(IN1, HIGH);
-  digitalWrite(IN2, LOW);
-  digitalWrite(IN3, HIGH);
-  digitalWrite(IN4, LOW);
-  
+  if (direct == false) {
+    digitalWrite(IN1, HIGH);
+    digitalWrite(IN2, LOW);
+    digitalWrite(IN3, HIGH);
+    digitalWrite(IN4, LOW);
+  }
+  else {
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, HIGH);
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, HIGH);
+  }
 //  // Object avoidance
-//  if (distanceR < 50 || distanceL < 50) {
+//  if (distanceR < 50 || distanceL < 50) { 
 //    int PWMdiff = 255/250 * (distanceR - distanceL);   
 //    if (PWMdiff > 0)
 //      ENA = distancePWM - PWMdiff;
@@ -124,28 +150,52 @@ void loop() {
 
   // User angle shift
   // TBD
+  
  
+}
+
+double demoPID (double newVal) {
+
+  double error = Set_Point - newVal;
+
+  if (error < 0)
+    direct = true;
+  else
+    direct = false;
+
+  int PWM = 80.0 + Kp*abs(error) + Kd*abs(error-last_error);
+
+  if (PWM > 255)
+    PWM = 255;
+
+  last_error = error;
+  
+  return PWM;
 }
 
 double PID(double newVal) {
 
-  float errVal;
-  float P;
-  float I;
-  float D;
+  double errVal;
+  double P;
+  double I;
+  double D;
 
-  if (newVal > 300)
+  if (newVal > 1000)
   newVal = PWM_Duty;
   
   // Something to try: for an array of read vals, we can keep each and decay them according to exp(-4*n/(N-1))
-  errVal = (Set_Point - newVal);
-  P = -Kp*errVal;
   
-  i_Temp += errVal;
-  if (i_Temp > windupGuard)
-    i_Temp = windupGuard;
-  else if (i_Temp < -windupGuard)
-    i_Temp = -windupGuard;
+  errVal = (Set_Point - newVal);  
+
+//  errVal = abs(errVal);
+  
+  P = -Kp*errVal;
+
+//  i_Temp += errVal;
+//  if (i_Temp > windupGuard)
+//    i_Temp = windupGuard;
+//  else if (i_Temp < -windupGuard)
+//    i_Temp = -windupGuard;
     
 
   if (i_Temp > iMax)
@@ -158,11 +208,11 @@ double PID(double newVal) {
   D = Kd*(d_Temp - errVal);
   d_Temp = errVal;
 
-  PWM_Duty = PWM_Temp - (P + I + D);
+  PWM_Duty = - (P + I + D);
   if (PWM_Duty > 255)
     PWM_Duty = 255;
-  if (PWM_Duty < 5)
-    PWM_Duty = 5;
+  if (PWM_Duty < 70)
+    PWM_Duty = 0;
 
   PWM_Temp = PWM_Duty;
   
