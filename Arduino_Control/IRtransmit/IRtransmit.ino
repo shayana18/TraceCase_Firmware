@@ -4,25 +4,40 @@
  * - Zayd Khalidi 14/03/2024
  */
 
-const int DAT = 8;
-const int OUT = 6;
+const int DAT = 3;
+const int OUT = A1;
 
 void setup() {
-  pinMode(6, INPUT);
-  pinMode(5, OUTPUT);
-  pinMode(7, OUTPUT);
-  pinMode(8, INPUT);
+ 
+  pinMode(2, OUTPUT); //D2
+  pinMode(DAT, OUTPUT); //D3
+  pinMode(OUT, INPUT); //D4
+  pinMode(5, OUTPUT); //D5
+  pinMode(A0, INPUT);
+
+  Serial.begin(115200);
 }
 
 void loop() {
   // const Vcc
-  digitalWrite(5, HIGH);
-  digitalWrite(7, HIGH);
+  digitalWrite(2, HIGH);
+  digitalWrite(3, HIGH);
 
   digitalWrite(DAT, HIGH);
-  delay(10);
-  digitalWrite(DAT, LOW);
-  delay(10);
+//  delay(10);
+//  digitalWrite(DAT, LOW);
+//  delay(10);
+
+//  if (digitalRead(OUT) == 1) {
+//    Serial.println("IR signal detected");
+//  }
+
+  Serial.print("Receiver: ");
+  Serial.println(digitalRead(OUT));
+  Serial.print("QRD: ");
+  Serial.println(digitalRead(A0));
+
+  delay(100);
 
   
 }

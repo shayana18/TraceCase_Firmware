@@ -39,6 +39,7 @@ double distanceU;
 double distancePWM;
 bool direct;
 double last_error;
+double i_decay[4] = {0, 0, 0, 0};
 double totalDist = 0;
 
 
@@ -119,10 +120,10 @@ void loop() {
 //  if (distanceR > 800 || distanceR < 20)
 //    distancePWM = 0;   
 //  else {
-    distancePWM = demoPID(distanceR);
+    distancePWM = demoPID(distanceU);
 //  }
     
-//    distancePWM = PID(530*(1 - exp(-(distanceR))/85) - 240); // Normalize user distance to a speed
+//   distancePWM = PID(530*(1 - exp(-(distanceR))/85) - 240); // Normalize user distance to a speed
       
   analogWrite(ENA, distancePWM);
   analogWrite(ENB, distancePWM);
@@ -162,13 +163,23 @@ double demoPID (double newVal) {
     direct = true;
   else
     direct = false;
-
-  int PWM = 80.0 + Kp*abs(error) + Kd*abs(error-last_error);
+    
+  double i_term = 0;
+  for(int i = 0; i < 4; i++)
+    i_term += i_decay[i];
+  
+  int PWM = 80.0 + Kp*abs(error) + Kd*abs(error-last_error) + Ki*(i_term);
 
   if (PWM > 255)
     PWM = 255;
 
   last_error = error;
+
+
+  i_decay[3] = i_decay[2]*exp(-4);
+  i_decay[2] = i_decay[1]*exp(-3);
+  i_decay[1] = i_decay[0];
+  i_decay[0] = abs(last_error);
   
   return PWM;
 }
