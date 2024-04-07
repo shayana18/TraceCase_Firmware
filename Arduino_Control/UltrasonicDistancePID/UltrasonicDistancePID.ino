@@ -155,10 +155,10 @@ void loop() {
       // User angle shift
       if(x_val < x_middle + 25) {
         analogWrite(ENA, ((demoPID(PiDist) + K*x_val) > 255) ? 255 : (demoPID(PiDist) + K*x_val));
-        analogWrite(ENB, ((demoPID(PiDist) - K*x_val) > 255) ? 255 : (demoPID(PiDist) + K*x_val));
+        analogWrite(ENB, ((demoPID(PiDist) - K*x_val) < 0) ? 0 : (demoPID(PiDist) - K*x_val));
       }
       else if(x_val >  x_middle - 25) {
-        analogWrite(ENA, ((demoPID(PiDist) - K*x_val) > 255) ? 255 : (demoPID(PiDist) + K*x_val));
+        analogWrite(ENA, ((demoPID(PiDist) - K*x_val) < 0) ? 0 : (demoPID(PiDist) - K*x_val));
         analogWrite(ENB, ((demoPID(PiDist) + K*x_val) > 255) ? 255 : (demoPID(PiDist) + K*x_val));
       }
       else {
