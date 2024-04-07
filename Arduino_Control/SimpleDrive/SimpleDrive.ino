@@ -20,24 +20,26 @@ void setup() {
   pinMode(IN3, OUTPUT);
   pinMode(IN4, OUTPUT);
   pinMode(ENB, OUTPUT);
+  Serial.begin(9600);
 }
 
 void loop() {
-  digitalWrite(ENA, 255);
-  digitalWrite(ENB, 225);
-    
+
   digitalWrite(IN1, LOW);
   digitalWrite(IN2, HIGH);
-
   digitalWrite(IN3, LOW);
   digitalWrite(IN4, HIGH);
 
-  delay(5000);
-
+  for(int PWM = 100; PWM > 60; PWM--) {
+    analogWrite(ENA, PWM);
+    analogWrite(ENB, PWM);
+    Serial.println(PWM);
+    delay(1000);
+  }
+  
   digitalWrite(IN1, LOW);
   digitalWrite(IN2, LOW);
   digitalWrite(IN3, LOW);
   digitalWrite(IN4, LOW);
-  
   delay(5000);
 }
