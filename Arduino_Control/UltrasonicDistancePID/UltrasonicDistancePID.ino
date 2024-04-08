@@ -25,7 +25,7 @@ const int echoPinL = 11;
 const int trigPinR = 12;
 const int echoPinR = 13;
 
-const double K = 0.50;
+const double K = 0.80;
 
 // PID constants
 const double Kp = 0.50;
@@ -163,6 +163,6 @@ double PID (double newVal) {
     PWM = 200;
 
   last_error = error;
-  
+
   return PWM;
 }
