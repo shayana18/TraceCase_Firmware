@@ -25,6 +25,10 @@ void setup() {
 
 void loop() {
 
+
+  analogWrite(ENA, 255);
+  analogWrite(ENB, 255);
+
   digitalWrite(IN1, LOW);
   digitalWrite(IN2, HIGH);
   digitalWrite(IN3, LOW);
