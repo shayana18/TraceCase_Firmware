@@ -25,7 +25,9 @@ const int echoPinL = 11;
 const int trigPinR = 12;
 const int echoPinR = 13;
 
-const double K = 0.80;
+int spike = 0;
+
+const double K = 1.50;
 
 // PID constants
 const double Kp = 0.50;
@@ -47,9 +49,9 @@ double i_term = 0;
 double totalDist = 0;
 double delta_t;
 double old_t;
-int WSF_Nterms=10;
+const int WSF_Nterms = 1;
 double WSF[WSF_Nterms];
-double WSF_totalpercent;
+double WSF_totalpercent = 0;
 double error_array[WSF_Nterms];
 
 void setup() {
@@ -64,14 +66,15 @@ void setup() {
   pinMode(echoPinL, INPUT); // Sets the echoPin as an Input
   pinMode(trigPinR, OUTPUT); // Sets the trigPin as an Output
   pinMode(echoPinR, INPUT); // Sets the echoPin as an Input
-  for(i=0,i<WSF_Nterms,i++){
-    WSF_totalpercent=100*e^(-4*i/3)+WSF_totalpercent
-    }
-  for(i=0,i<WSF_Nterms,i++){
-  WSF[i]=100*e^(-4*i/3)/WSF_totalpercent;
-    }
-for(i=0,i<WSF_Nterms,i++){
-  error_array[i]=0;
+  
+  for(int i=0;i<WSF_Nterms;i++){
+    WSF_totalpercent=100*exp(-4*i/(WSF_Nterms-1))+WSF_totalpercent;
+  }
+  for(int i=0;i<WSF_Nterms;i++){
+    WSF[i]=100*exp(-4*i/(WSF_Nterms-1))/WSF_totalpercent;
+  }
+  for(int i=0;i<WSF_Nterms;i++){
+    error_array[i]=0;
   }
   Serial.begin(9600); // Starts the serial communication
 }
@@ -120,19 +123,27 @@ void loop() {
 
 //  distancePWM = PID(530*(1 - exp(-(distanceR))/85) - 240); // Normalize user distance to a speed
 
+    if (spike - millis() > 1000) {
+      delay(250);
+      analogWrite(ENA, 255);
+      analogWrite(ENB, 255);
+      delay(10);
+      spike = millis();
+    }
+    
     if(PiDist == 0) {
       analogWrite(ENA, 0);
       analogWrite(ENB, 0);      
     }
     else {
       // User angle shift
-      if(x_val < x_middle + 50) {
-        analogWrite(ENA, ((PID(PiDist) + K*x_val) > 200) ? 200 : (PID(PiDist) + K*x_val));
+      if(x_val < x_middle + 75) {
+        analogWrite(ENA, ((PID(PiDist) + K*x_val) > 255) ? 255 : (PID(PiDist) + K*x_val));
         analogWrite(ENB, ((PID(PiDist) - K*x_val) < 0) ? 0 : (PID(PiDist) - K*x_val));
       }
-      else if(x_val >  x_middle - 50) {
+      else if(x_val >  x_middle - 75) {
         analogWrite(ENA, ((PID(PiDist) - K*x_val) < 0) ? 0 : (PID(PiDist) - K*x_val));
-        analogWrite(ENB, ((PID(PiDist) + K*x_val) > 200) ? 200 : (PID(PiDist) + K*x_val));
+        analogWrite(ENB, ((PID(PiDist) + K*x_val) > 255) ? 255 : (PID(PiDist) + K*x_val));
       }
       else {
         analogWrite(ENA, PID(PiDist));
@@ -161,18 +172,22 @@ void loop() {
 }
 
 double PID (double newVal) {
-delta_t=millis()-old_t;
-old_t=millis();
+  delta_t = millis() - old_t;
+  old_t = millis();
 
-  double error = Set_Point - newVal;
-for(i=1,i<WSF_Nterms,i++){
-error_array[WSF_Nterms-(i)]=error_array[WSF_Nterms-(i+1)];
+  double error = 0;
+  double diff = Set_Point - newVal;
+  
+  for(int i=1;i<WSF_Nterms;i++){
+    error_array[WSF_Nterms-(i)] = error_array[WSF_Nterms-(i+1)];
   }
-error_array[0]=error;
-for(i=0,i<WSF_Nterms,i++){
-error=error_array[i]*WSF[i]+error;
+  error_array[0] = diff;
+  for(int i=0;i<WSF_Nterms;i++){
+    error += error_array[i]*WSF[i];
   }
+  
   i_term += error;
+  
   if (i_term > iMax)
     i_term = iMax;
   else if (i_term < iMin)
@@ -180,8 +195,8 @@ error=error_array[i]*WSF[i]+error;
   
   int PWM = 95.0 - Kp*(error) - Kd*(error-last_error)/delta_t - Ki*(i_term);
 
-  if (PWM > 200)
-    PWM = 200;
+  if (PWM > 255)
+    PWM = 255;
 
   last_error = error;
 
