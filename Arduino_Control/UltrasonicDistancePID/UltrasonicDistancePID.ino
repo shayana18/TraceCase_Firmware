@@ -45,7 +45,12 @@ bool direct;
 double last_error;
 double i_term = 0;
 double totalDist = 0;
-
+double delta_t;
+double old_t;
+int WSF_Nterms=10;
+double WSF[WSF_Nterms];
+double WSF_totalpercent;
+double error_array[WSF_Nterms];
 
 void setup() {
   pinMode(ENA, OUTPUT); // Right Motor PWNM
@@ -59,7 +64,15 @@ void setup() {
   pinMode(echoPinL, INPUT); // Sets the echoPin as an Input
   pinMode(trigPinR, OUTPUT); // Sets the trigPin as an Output
   pinMode(echoPinR, INPUT); // Sets the echoPin as an Input
-  
+  for(i=0,i<WSF_Nterms,i++){
+    WSF_totalpercent=100*e^(-4*i/3)+WSF_totalpercent
+    }
+  for(i=0,i<WSF_Nterms,i++){
+  WSF[i]=100*e^(-4*i/3)/WSF_totalpercent;
+    }
+for(i=0,i<WSF_Nterms,i++){
+  error_array[i]=0;
+  }
   Serial.begin(9600); // Starts the serial communication
 }
 void loop() {
@@ -148,16 +161,24 @@ void loop() {
 }
 
 double PID (double newVal) {
+delta_t=millis()-old_t;
+old_t=millis();
 
   double error = Set_Point - newVal;
-
+for(i=1,i<WSF_Nterms,i++){
+error_array[WSF_Nterms-(i)]=error_array[WSF_Nterms-(i+1)];
+  }
+error_array[0]=error;
+for(i=0,i<WSF_Nterms,i++){
+error=error_array[i]*WSF[i]+error;
+  }
   i_term += error;
   if (i_term > iMax)
     i_term = iMax;
   else if (i_term < iMin)
     i_term = iMin;
   
-  int PWM = 95.0 - Kp*(error) - Kd*(error-last_error) - Ki*(i_term);
+  int PWM = 95.0 - Kp*(error) - Kd*(error-last_error)/delta_t - Ki*(i_term);
 
   if (PWM > 200)
     PWM = 200;
