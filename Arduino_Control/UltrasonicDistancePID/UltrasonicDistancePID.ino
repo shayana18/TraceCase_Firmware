@@ -34,7 +34,8 @@ const double Kobject =0.0;
 
 // PID constants
 
-const double Kp = 1.50;
+const double Kmaster = 1.0;
+const double Kp = 2.50;
 const double Ki = 0.0;
 const double Kd = 0.0;
 const double Set_Point = 50.0;
@@ -58,7 +59,9 @@ double WSF[WSF_Nterms];
 double WSF_totalpercent = 0;
 double error_array[WSF_Nterms];
 int num_same_vals=0;
-double old_dist;
+double old_dist=0;
+double time_sameval=0;
+double oldtime_sameval=0;
 
 void setup() {
   pinMode(ENA, OUTPUT); // Right Motor PWNM
@@ -73,15 +76,15 @@ void setup() {
   pinMode(trigPinR, OUTPUT); // Sets the trigPin as an Output
   pinMode(echoPinR, INPUT); // Sets the echoPin as an Input
   
-  for(int i=0;i<WSF_Nterms;i++){
-    WSF_totalpercent=100*exp(-4*i/(WSF_Nterms-1))+WSF_totalpercent;
-  }
-  for(int i=0;i<WSF_Nterms;i++){
-    WSF[i]=100*exp(-4*i/(WSF_Nterms-1))/WSF_totalpercent;
-  }
-  for(int i=0;i<WSF_Nterms;i++){
-    error_array[i]=0;
-  }
+//  for(int i=0;i<WSF_Nterms;i++){
+//    WSF_totalpercent=100*exp(-4*i/(WSF_Nterms-1))+WSF_totalpercent;
+//  }
+//  for(int i=0;i<WSF_Nterms;i++){
+//    WSF[i]=100*exp(-4*i/(WSF_Nterms-1))/WSF_totalpercent;
+//  }
+//  for(int i=0;i<WSF_Nterms;i++){
+//    error_array[i]=0;
+//  }
   digitalWrite(IN1, LOW);
   digitalWrite(IN2, HIGH);
   digitalWrite(IN3, LOW);
@@ -94,30 +97,31 @@ void loop() {
     data = Serial.readStringUntil('\n');
     int comma_index = data.indexOf(",");
     PiDist = data.substring(0,comma_index).toInt();
-    if(PiDist==old_dist){  // if new PiDist matches old Pi dist, increment nm_same_vals by 1
-      num_same_vals++;
-    }
-    else{
-      num_same_vals=0;
-    }
-    if(num_same_vals=10){ 
-    while(PiDist==old_dist){ 
-      //While the value read is the same as it was, set motors = 0, keep reading until PiDist does not = old dist
-     // WRITE BOTH MOTORS TOO ZERO SPEED
-        if (Serial.available() > 0) {
-    data = Serial.readStringUntil('\n');
-    int comma_index = data.indexOf(",");
-    PiDist = data.substring(0,comma_index).toInt();
-
-    }  
-    }
-    num_same_vals=0
-      }
-    
-    old_dist=PiDist;
     x_val = data.substring(comma_index + 1).toInt();
+    
+      if(PiDist!=old_dist){  // if new PiDist matches old Pi dist, increment nm_same_vals by 1
+        oldtime_sameval=millis();
+      }
+      else{
+          time_sameval=millis()-oldtime_sameval;
+      }
+
+      if(time_sameval>1000){
+      timeout();
+      }
+      
+//      num_same_vals++;
+//    }
+//    
+//    else{
+//      num_same_vals=0;
+//    }
+//    
+//    if(num_same_vals=10){
+//    Sameval();
+//    } 
+    old_dist=PiDist;
     delay(10);
-    disconnected -= millis();
   }
   
 //  // Clears the trigPin
@@ -195,20 +199,21 @@ void loop() {
       }
 }
 
+
 double PID (int newVal) {
   delta_t = millis() - old_t;
   old_t = millis();
 
-  double error;
-  double diff = Set_Point - newVal;
+  double error = Set_Point - newVal;
+  double diff;
   
-  for(int i=1;i<WSF_Nterms;i++){
-    error_array[WSF_Nterms-(i)] = error_array[WSF_Nterms-(i+1)];
-  }
-  error_array[0] = diff;
-  for(int i=0;i<WSF_Nterms;i++){
-    error += error_array[i]*WSF[i];
-  }
+//  for(int i=1;i<WSF_Nterms;i++){
+//    error_array[WSF_Nterms-(i)] = error_array[WSF_Nterms-(i+1)];
+//  }
+//  error_array[0] = diff;
+//  for(int i=0;i<WSF_Nterms;i++){
+//    error += error_array[i]*WSF[i];
+//  }
   
   i_term += error;
   
@@ -217,7 +222,7 @@ double PID (int newVal) {
   else if (i_term < iMin)
     i_term = iMin;
   
-  int PWM = 95.0 - Kp*(error) - Kd*(error-last_error)/delta_t - Ki*(i_term);
+  int PWM = 150.0 - Kmaster*(Kp*(error) + Kd*(error-last_error)/delta_t + Ki*(i_term));
 
   if (PWM > maxPWM)
     PWM = maxPWM;
@@ -225,4 +230,33 @@ double PID (int newVal) {
   last_error = error;
 
   return PWM;
+}
+
+void Sameval(){
+      while(PiDist==old_dist){ 
+      //While the value read is the same as it was, set motors = 0, keep reading until PiDist does not = old dist
+        analogWrite(ENA, 0);
+        analogWrite(ENB, 0);
+        
+        if (Serial.available() > 0) {
+        data = Serial.readStringUntil('\n');
+        int comma_index = data.indexOf(",");
+        PiDist = data.substring(0,comma_index).toInt();
+        }  
+      }
+      num_same_vals=0;
+      return;
+     }
+void timeout(){
+  while(PiDist==old_dist){
+     analogWrite(ENA, 0);
+        analogWrite(ENB, 0);
+        
+        if (Serial.available() > 0) {
+        data = Serial.readStringUntil('\n');
+        int comma_index = data.indexOf(",");
+        PiDist = data.substring(0,comma_index).toInt();
+        }  
+      }
+  return;
 }
