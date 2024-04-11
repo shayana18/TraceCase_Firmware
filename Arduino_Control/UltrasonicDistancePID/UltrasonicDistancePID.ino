@@ -107,7 +107,17 @@ void loop() {
       }
 
       if(time_sameval>1000){
-      timeout();
+         while(PiDist==old_dist){
+     analogWrite(ENA, 0);
+        analogWrite(ENB, 0);
+        
+        if (Serial.available() > 0) {
+        data = Serial.readStringUntil('\n');
+        int comma_index = data.indexOf(",");
+        PiDist = data.substring(0,comma_index).toInt();
+        }  
+      }
+     // timeout();
       }
       
 //      num_same_vals++;
