@@ -33,13 +33,7 @@ void loop() {
   digitalWrite(IN2, HIGH);
   digitalWrite(IN3, LOW);
   digitalWrite(IN4, HIGH);
-
-  for(int PWM = 100; PWM > 60; PWM--) {
-    analogWrite(ENA, PWM);
-    analogWrite(ENB, PWM);
-    Serial.println(PWM);
-    delay(1000);
-  }
+  delay(5000);
   
   digitalWrite(IN1, LOW);
   digitalWrite(IN2, LOW);

@@ -10,6 +10,7 @@ int x_val;
 int x_middle = 320;
 int PiDist; 
 String string_to_send;
+int disconnected = 0;
 
 // defines pins numbers
 const int ENA = 3;
@@ -26,14 +27,17 @@ const int trigPinR = 12;
 const int echoPinR = 13;
 
 int spike = 0;
+const int maxPWM = 255;
 
-const double K = 1.50;
+const double Kangle = 0.3;
+const double Kobject =0.0;
 
 // PID constants
-const double Kp = 0.50;
+
+const double Kp = 1.50;
 const double Ki = 0.0;
 const double Kd = 0.0;
-const double Set_Point = 100.0;
+const double Set_Point = 50.0;
 const double iMax = 200;
 const double iMin = 0;
 
@@ -76,8 +80,13 @@ void setup() {
   for(int i=0;i<WSF_Nterms;i++){
     error_array[i]=0;
   }
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
   Serial.begin(9600); // Starts the serial communication
 }
+
 void loop() {
 
   if (Serial.available() > 0) {
@@ -85,34 +94,34 @@ void loop() {
     int comma_index = data.indexOf(",");
     PiDist = data.substring(0,comma_index).toInt();
     x_val = data.substring(comma_index + 1).toInt();
-    Serial.println(PiDist);
     delay(10);
+    disconnected -= millis();
   }
   
-  // Clears the trigPin
-  digitalWrite(trigPinL, LOW); // 3ums
-  delayMicroseconds(2); // 2ums
-  digitalWrite(trigPinL, HIGH); // 3ums
-  delayMicroseconds(10); // 10ums
-  digitalWrite(trigPinL, LOW); //3ums
-  // Reads the echoPin, returns the sound wave travel time in microseconds
-  durationL = pulseIn(echoPinL, HIGH);
-  // Calculating the distance
-  distanceL = durationL * 0.034 / 2; // ~3ums
-
-  // Clears the trigPin
-  digitalWrite(trigPinR, LOW); // 3ums
-  delayMicroseconds(2);  // 2ums
-  digitalWrite(trigPinR, HIGH); // 3ums
-  delayMicroseconds(10); // 10ums
-  digitalWrite(trigPinR, LOW); // 3ums
-  // Reads the echoPin, returns the sound wave travel time in microseconds
-  durationR = pulseIn(echoPinR, HIGH);
-  // Calculating the distance
-  distanceR = durationR * 0.034 / 2; // ~3ums
-
-// Total delay from both R&L = ~50ums
-
+//  // Clears the trigPin
+//  digitalWrite(trigPinL, LOW); // 3ums
+//  delayMicroseconds(2); // 2ums
+//  digitalWrite(trigPinL, HIGH); // 3ums
+//  delayMicroseconds(10); // 10ums
+//  digitalWrite(trigPinL, LOW); //3ums
+//  // Reads the echoPin, returns the sound wave travel time in microseconds
+//  durationL = pulseIn(echoPinL, HIGH);
+//  // Calculating the distance
+//  distanceL = durationL * 0.034 / 2; // ~3ums
+//
+//  // Clears the trigPin
+//  digitalWrite(trigPinR, LOW); // 3ums
+//  delayMicroseconds(2);  // 2ums
+//  digitalWrite(trigPinR, HIGH); // 3ums
+//  delayMicroseconds(10); // 10ums
+//  digitalWrite(trigPinR, LOW); // 3ums
+//  // Reads the echoPin, returns the sound wave travel time in microseconds
+//  durationR = pulseIn(echoPinR, HIGH);
+//  // Calculating the distance
+//  distanceR = durationR * 0.034 / 2; // ~3ums
+//
+//// Total delay from both R&L = ~50ums
+//
 //  // Prints the distance on the Serial Monitor
 //  Serial.print("Distance Left: ");
 //  Serial.print(distanceL);
@@ -120,62 +129,55 @@ void loop() {
 //  // Prints the distance on the Serial Monitor
 //  Serial.print("\t\t Distance Right: ");
 //  Serial.println(distanceR);
-
+//
 //  distancePWM = PID(530*(1 - exp(-(distanceR))/85) - 240); // Normalize user distance to a speed
-
-    if (spike - millis() > 1000) {
-      delay(250);
-      analogWrite(ENA, 255);
-      analogWrite(ENB, 255);
-      delay(10);
-      spike = millis();
-    }
-    
-    if(PiDist == 0) {
-      analogWrite(ENA, 0);
-      analogWrite(ENB, 0);      
-    }
-    else {
+//
+//    if (spike - millis() > 1000) {
+//      delay(250);
+//      analogWrite(ENA, maxPWM);
+//      analogWrite(ENB, maxPWM);
+//      delay(10);
+//      spike = millis();
+//    }
+//    
+//
+//    if(distanceR < 50){  
+//      analogWrite(ENA, maxPWM - Kobject*(50-distanceR));
+//    }
+//    else if (distanceL < 50) {
+//      analogWrite(ENB, maxPWM - Kobject*(50-distanceL));
+//    }
+//    else {
+//      analogWrite(ENA, maxPWM);
+//      analogWrite(ENB, maxPWM);
+//    }
+//    if(disconnected <= 1500) {
+//      analogWrite(ENA, 0);
+//      analogWrite(ENB, 0);      
+//    }
+//    else {
       // User angle shift
-      if(x_val < x_middle + 75) {
-        analogWrite(ENA, ((PID(PiDist) + K*x_val) > 255) ? 255 : (PID(PiDist) + K*x_val));
-        analogWrite(ENB, ((PID(PiDist) - K*x_val) < 0) ? 0 : (PID(PiDist) - K*x_val));
+      if(x_val < x_middle + 75) { 
+        analogWrite(ENA, ((PID(PiDist) + Kangle*abs(x_middle-x_val)) > maxPWM) ? maxPWM : (PID(PiDist) + Kangle*abs(x_middle-x_val)));
+//        analogWrite(ENA, maxPWM);
+        analogWrite(ENB, ((PID(PiDist) - Kangle*abs(x_middle-x_val)) < 0) ? 0 : (PID(PiDist) - Kangle*abs(x_middle-x_val)));
       }
       else if(x_val >  x_middle - 75) {
-        analogWrite(ENA, ((PID(PiDist) - K*x_val) < 0) ? 0 : (PID(PiDist) - K*x_val));
-        analogWrite(ENB, ((PID(PiDist) + K*x_val) > 255) ? 255 : (PID(PiDist) + K*x_val));
+        analogWrite(ENA, ((PID(PiDist) - Kangle*abs(x_middle-x_val)) < 0) ? 0 : (PID(PiDist) - Kangle*abs(x_middle-x_val)));
+//        analogWrite(ENB, maxPWM);
+      analogWrite(ENB, ((PID(PiDist) + Kangle*abs(x_middle-x_val)) > maxPWM) ? maxPWM : (PID(PiDist) + Kangle*abs(x_middle-x_val)));
       }
       else {
         analogWrite(ENA, PID(PiDist));
         analogWrite(ENB, PID(PiDist));
       }
-    }
-    digitalWrite(IN1, LOW);
-    digitalWrite(IN2, HIGH);
-    digitalWrite(IN3, LOW);
-    digitalWrite(IN4, HIGH);
-  
-//  else {
-//    analogWrite(ENA, 0);
-//    analogWrite(ENB, 0);
-//  }
-//  // Object avoidance
-//  if (distanceR < 50 || distanceL < 50) { 
-//    int PWMdiff = 255/250 * (distanceR - distanceL);   
-//    if (PWMdiff > 0)
-//      ENA = distancePWM - PWMdiff;
-//    else if (PWMdiff < 0)
-//      ENB = distancePWM + PWMdiff;
-//  }
-
- 
 }
 
-double PID (double newVal) {
+double PID (int newVal) {
   delta_t = millis() - old_t;
   old_t = millis();
 
-  double error = 0;
+  double error;
   double diff = Set_Point - newVal;
   
   for(int i=1;i<WSF_Nterms;i++){
@@ -195,8 +197,8 @@ double PID (double newVal) {
   
   int PWM = 95.0 - Kp*(error) - Kd*(error-last_error)/delta_t - Ki*(i_term);
 
-  if (PWM > 255)
-    PWM = 255;
+  if (PWM > maxPWM)
+    PWM = maxPWM;
 
   last_error = error;
 
