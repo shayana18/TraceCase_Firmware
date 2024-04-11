@@ -29,16 +29,16 @@ const int echoPinR = 13;
 int spike = 0;
 const int maxPWM = 255;
 
-const double Kangle = 0.3;
+const double Kangle = 0.32;
 const double Kobject =0.0;
 
 // PID constants
 
 const double Kmaster = 1.0;
-const double Kp = 2.50;
+const double Kp = 0.50;
 const double Ki = 0.0;
 const double Kd = 0.0;
-const double Set_Point = 50.0;
+const double Set_Point = 100.0;
 const double iMax = 200;
 const double iMin = 0;
 
@@ -62,6 +62,7 @@ int num_same_vals=0;
 double old_dist=0;
 double time_sameval=0;
 double oldtime_sameval=0;
+double K_distance_ratio;
 
 void setup() {
   pinMode(ENA, OUTPUT); // Right Motor PWNM
@@ -96,31 +97,20 @@ void loop() {
   if (Serial.available() > 0) {
     data = Serial.readStringUntil('\n');
     int comma_index = data.indexOf(",");
-    PiDist = data.substring(0,comma_index).toInt();
-    x_val = data.substring(comma_index + 1).toInt();
+    PiDist = data.substring(0,comma_index).toDouble();
+    x_val = data.substring(comma_index + 1).toDouble();    
     
-      if(PiDist!=old_dist){  // if new PiDist matches old Pi dist, increment nm_same_vals by 1
-        oldtime_sameval=millis();
-      }
-      else{
-          time_sameval=millis()-oldtime_sameval;
-      }
-
-      if(time_sameval>1000){
-      timeout();
-      }
-      
-//      num_same_vals++;
-//    }
-//    
-//    else{
-//      num_same_vals=0;
-//    }
-//    
-//    if(num_same_vals=10){
-//    Sameval();
-//    } 
-    old_dist=PiDist;
+    if(PiDist==old_dist){  // if new PiDist matches old Pi dist, increment nm_same_vals by 1      
+      num_same_vals++;
+    }
+    else{
+      num_same_vals = 0;
+    }
+    if(num_same_vals == 5){
+      analogWrite(ENA, 0);
+      analogWrite(ENB, 0);      
+    } 
+    old_dist = PiDist;
     delay(10);
   }
   
@@ -183,24 +173,27 @@ void loop() {
 //    }
 //    else {
       // User angle shift
-      if(x_val < x_middle + 75) { 
-        analogWrite(ENA, ((PID(PiDist) + Kangle*abs(x_middle-x_val)) > maxPWM) ? maxPWM : (PID(PiDist) + Kangle*abs(x_middle-x_val)));
+      K_distance_ratio=Set_Point/PiDist;
+
+      if(x_val < x_middle + 50) { 
+        analogWrite(ENA, ((PID(PiDist) + K_distance_ratio*Kangle*abs(x_middle-x_val)) > maxPWM) ? maxPWM : (PID(PiDist) +  K_distance_ratio*Kangle*abs(x_middle-x_val)));
 //        analogWrite(ENA, maxPWM);
-        analogWrite(ENB, ((PID(PiDist) - Kangle*abs(x_middle-x_val)) < 0) ? 0 : (PID(PiDist) - Kangle*abs(x_middle-x_val)));
+        analogWrite(ENB, ((PID(PiDist) -  K_distance_ratio*Kangle*abs(x_middle-x_val)) < 0) ? 0 : (PID(PiDist) -  K_distance_ratio*Kangle*abs(x_middle-x_val)));
       }
-      else if(x_val >  x_middle - 75) {
-        analogWrite(ENA, ((PID(PiDist) - Kangle*abs(x_middle-x_val)) < 0) ? 0 : (PID(PiDist) - Kangle*abs(x_middle-x_val)));
+      else if(x_val >  x_middle - 50) {
+        analogWrite(ENA, ((PID(PiDist) -  K_distance_ratio*Kangle*abs(x_middle-x_val)) < 0) ? 0 : (PID(PiDist) -  K_distance_ratio*Kangle*abs(x_middle-x_val)));
 //        analogWrite(ENB, maxPWM);
-      analogWrite(ENB, ((PID(PiDist) + Kangle*abs(x_middle-x_val)) > maxPWM) ? maxPWM : (PID(PiDist) + Kangle*abs(x_middle-x_val)));
+        analogWrite(ENB, ((PID(PiDist) +  K_distance_ratio*Kangle*abs(x_middle-x_val)) > maxPWM) ? maxPWM : (PID(PiDist) +  K_distance_ratio*Kangle*abs(x_middle-x_val)));
       }
       else {
         analogWrite(ENA, PID(PiDist));
         analogWrite(ENB, PID(PiDist));
       }
+      
 }
 
 
-double PID (int newVal) {
+double PID (double newVal) {
   delta_t = millis() - old_t;
   old_t = millis();
 
@@ -222,13 +215,16 @@ double PID (int newVal) {
   else if (i_term < iMin)
     i_term = iMin;
   
-  int PWM = 150.0 - Kmaster*(Kp*(error) + Kd*(error-last_error)/delta_t + Ki*(i_term));
+  int PWM = 100 - Kmaster*(Kp*(error) + Kd*(error-last_error)/delta_t + Ki*(i_term));
 
   if (PWM > maxPWM)
     PWM = maxPWM;
 
   last_error = error;
 
+  Serial.print("Aruino: ");
+  Serial.println(PWM);
+  
   return PWM;
 }
 
@@ -247,16 +243,3 @@ void Sameval(){
       num_same_vals=0;
       return;
      }
-void timeout(){
-  while(PiDist==old_dist){
-     analogWrite(ENA, 0);
-        analogWrite(ENB, 0);
-        
-        if (Serial.available() > 0) {
-        data = Serial.readStringUntil('\n');
-        int comma_index = data.indexOf(",");
-        PiDist = data.substring(0,comma_index).toInt();
-        }  
-      }
-  return;
-}
