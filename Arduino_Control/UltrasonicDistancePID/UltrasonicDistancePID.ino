@@ -53,6 +53,8 @@ const int WSF_Nterms = 1;
 double WSF[WSF_Nterms];
 double WSF_totalpercent = 0;
 double error_array[WSF_Nterms];
+int num_same_vals=0;
+double old_dist;
 
 void setup() {
   pinMode(ENA, OUTPUT); // Right Motor PWNM
@@ -79,11 +81,31 @@ void setup() {
   Serial.begin(9600); // Starts the serial communication
 }
 void loop() {
-
   if (Serial.available() > 0) {
     data = Serial.readStringUntil('\n');
     int comma_index = data.indexOf(",");
     PiDist = data.substring(0,comma_index).toInt();
+    if(PiDist==old_dist){  // if new PiDist matches old Pi dist, increment nm_same_vals by 1
+      num_same_vals++;
+    }
+    else{
+      num_same_vals=0;
+    }
+    if(num_same_vals=10){ 
+    while(PiDist==old_dist){ 
+      //While the value read is the same as it was, set motors = 0, keep reading until PiDist does not = old dist
+     // WRITE BOTH MOTORS TOO ZERO SPEED
+        if (Serial.available() > 0) {
+    data = Serial.readStringUntil('\n');
+    int comma_index = data.indexOf(",");
+    PiDist = data.substring(0,comma_index).toInt();
+
+    }  
+    }
+    num_same_vals=0
+      }
+    
+    old_dist=PiDist;
     x_val = data.substring(comma_index + 1).toInt();
     Serial.println(PiDist);
     delay(10);
